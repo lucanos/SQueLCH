@@ -1,0 +1,48 @@
+# SQueLCH
+
+**SQueLCH** is the **Structured Query Language CLASS Handler** - a PHP class designed to act as an interpreter when working with SQL Databases.
+
+## Origins
+
+**SQueLCH** originally came into being as an adaptation of Justin Vincent's ezSQL package. The ezSQL package allowed a single "core" CLASS to be extended to interact with a number of SQL engines.
+
+The modifications performed to those original files started with rolling all of the extensions into the core, to create a Universal Handler. After that change was made, further modifications were made, extending the caching functionality, reporting systems, and other aspects of the CLASS.
+
+The **SQueLCH** system, as it exists today, is quite different from where it began as a separate fork, but the work of Justin certainly laid a great foundation, not only for this CLASS, but also for the whole suite of PHP packages which utilise ezSQL as a critical component.
+
+## Usage
+
+*For all examples, `$db` will be used to indicate a global variable, holding the SQueLCH object*
+
+### Initialisation
+
+The SQueLCH CLASS can be initiated in a number of fashions.
+
+`new SQueLCH( string *$dbType* , string *$dbUser* , string *$dbPass* , string *$dbBase* [, string *$dbHost = 'localhost'* [, int *$dbPort* ] ] );`
+`new SQueLCH( string *$dbType* , array *$dbParams* );`
+
+* $dbType - The Database Type. ( 'mssql' , 'mysql' , 'oracle' , 'pdo' , 'postgresql' , 'sqlite' )
+* $dbUser - The Database Username.
+* $dbPass - The Database Password.
+* $dbBass - The Database Name.
+* $dbHost - The Hostname or IP Address for the Database Host.
+* $dbPort - The Port (if non-standard) on the Database Host.
+
+#### Examples
+
+Connecting to a MySQL Database, called "myDatabase", running on the localhost, with Username "Username" and Password "SecretPa55word".
+
+`$db = new SQueLCH( 'mysql' , 'Username' , 'SecretPa55word' , 'myDatabase' );`
+
+### Interaction - Basic Query (INSERT, DELETE, UPDATE)
+
+For simple interactions, where no tuples need be returned.
+
+`$db->query( string *$query* [, bool $ignoreCache = false] );`
+
+#### Examples
+
+Inserting a simple tuple into table "ExampleTable".
+
+`$db->query( "INSERT INTO `ExampleTable` ( `fieldOne` ) VALUES ( 1 )" );`
+

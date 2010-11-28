@@ -2,7 +2,7 @@
 
 /*
 
-  SQueLCH v2.0.1
+  SQueLCH v3.0
 
   Copyright 2008 Luke Stevenson <lucanos@gmail.com>
 
@@ -17,16 +17,16 @@
 //=============================================================================
 
  # Initiate Defined Variables
-  define( 'EZSQL_VERSION' , '2.0.1' );
-  define( 'OBJECT'        , 'OBJECT'  , true );
-  define( 'ARRAY_A'       , 'ARRAY_A' , true );
-  define( 'ARRAY_N'       , 'ARRAY_N' , true );
+  define( 'SQueLCH_VERSION' , '3.0' );
+  define( 'OBJECT'          , 'OBJECT'  , true );
+  define( 'ARRAY_A'         , 'ARRAY_A' , true );
+  define( 'ARRAY_N'         , 'ARRAY_N' , true );
 
 
 // The CLASS ******************************************************************
 //=============================================================================
 
-class ezSQL {
+class SQueLCH {
 
   // Class Variables **********************************************************
   //=============================================================================
@@ -38,12 +38,9 @@ class ezSQL {
     var $dbType           = false;
     var $dbTypes          = array( 'mssql' , 'mysql' , 'oracle' , 'pdo' , 'postgresql' , 'sqlite' );
     var $dbHandle         = false;
-    var $last_action      = false;
     var $last_result      = false;
     var $last_query       = false;
-    var $last_insert      = false;
     var $col_info         = false;
-    
     var $from_disk_cache  = false;
     
     var $trace            = false; // same as $debug_all
@@ -64,8 +61,7 @@ class ezSQL {
                                 ) ,
                               'time'    => 0.0
                               );
-    
-    var $cache_keys       = array( 'col_info' , 'last_result' , 'num_rows' , 'return_value' );
+
     var $cache_dir        = false;
     var $cache_queries    = false;
     var $cache_inserts    = false;
@@ -87,27 +83,27 @@ class ezSQL {
         case 'mssql' :
           if( !function_exists( 'mssql_connect' ) )
             die( '<b>Fatal Error:</b>
-                  ezSQL requires ntwdblib.dll to be present in your winowds\system32 folder. Also enable MSSQL extenstion in PHP.ini file ' );
+                  SQueLCH requires ntwdblib.dll to be present in your winowds\system32 folder. Also enable MSSQL extenstion in PHP.ini file ' );
           break;
         case 'mysql' :
           if ( !function_exists ('mysql_connect') )
             die( '<b>Fatal Error:</b>
-                  ezSQL requires mySQL Lib to be compiled and or linked in to the PHP engine' );
+                  SQueLCH requires mySQL Lib to be compiled and or linked in to the PHP engine' );
           break;
         case 'oracle' :
           if ( !function_exists( 'OCILogon' ) )
             die( '<b>Fatal Error:</b>
-                  ezSQL requires Oracle OCI Lib to be compiled and/or linked in to the PHP engine' );
+                  SQueLCH requires Oracle OCI Lib to be compiled and/or linked in to the PHP engine' );
           break;
         case 'postgresql' :
           if ( !function_exists( 'pg_connect' ) )
             die( '<b>Fatal Error:</b>
-                  ezSQL requires PostgreSQL Lib to be compiled and or linked in to the PHP engine' );
+                  SQueLCH requires PostgreSQL Lib to be compiled and or linked in to the PHP engine' );
           break;
         case 'sqlite' :
           if ( !function_exists( 'sqlite_open' ) )
             die( '<b>Fatal Error:</b>
-                  ezSQL requires SQLite Lib to be compiled and or linked in to the PHP engine' );
+                  SQueLCH requires SQLite Lib to be compiled and or linked in to the PHP engine' );
           break;
         default:
           $this->register_error( 'Invalid Database Type "'.$dbType.'"' );
@@ -115,12 +111,12 @@ class ezSQL {
     }
 
    # Connect to SQL Database Source
-    function ezSQL( $dbType=false , $dbUser=false , $dbPass=false , $dbBase=false , $dbHost=false , $dbPort=false ) {
+    function SQueLCH( $dbType=false , $dbUser=false , $dbPass=false , $dbBase=false , $dbHost=false , $dbPort=false ) {
      # Check Database Type
       if( $dbType!==false && !in_array( $dbType=strtolower( $dbType ) , $this->dbTypes ) ) {
        // Invalid Database Type Selected.
-        $this->register_error( 'Invalid Database Type "'.$dbType.'"' ); return false;
-
+        $this->register_error( 'Invalid Database Type "'.$dbType.'"' );
+        return false;
       } else {
         if( $dbType!==false ) {
          // New Database Type Selected
@@ -134,74 +130,74 @@ class ezSQL {
         case 'mssql' :
          # Must have a user and a password
           if( !$dbUser || !$dbPass ) {
-            $this->register_error( 'Missing Username or Password' ); return false;
-
+            $this->register_error( 'Missing Username or Password' );
+            return false;
           }
          # Try to establish Database Handle
           if( !$dbHost ) $dbHost = 'localhost';
           if( !$this->dbHandle = @mssql_connect( $dbHost , $dbUser , $dbPass ) ) {
-            $this->register_error( 'Unable to connect to MSSQL Source' ); return false;
-
+            $this->register_error( 'Unable to connect to MSSQL Source' );
+            return false;
           }
          # Connect to Database
           if( !$dbBase ) {
-            $this->register_error( 'Missing Database Name' ); return false;
-
+            $this->register_error( 'Missing Database Name' );
+            return false;
           }
           return (bool) $this->select( $dbBase );
           break;
         case 'mysql' :
          # Must have a user and a password
           if( !$dbUser || !$dbPass ) {
-            $this->register_error( 'Missing Username or Password' ); return false;
-
+            $this->register_error( 'Missing Username or Password' );
+            return false;
           }
          # Try to establish Database Handle
           if( !$dbHost ) $dbHost = 'localhost';
           if( !$this->dbHandle = @mysql_connect( $dbHost.($inPort?":$inPort":'') , $dbUser , $dbPass , true ) ) {
-            $this->register_error( 'Unable to connect to MySQL Source' ); return false;
-
+            $this->register_error( 'Unable to connect to MySQL Source' );
+            return false;
           }
          # Connect to Database
           if( !$dbBase ) {
-            $this->register_error( 'Missing Database Name' ); return false;
-
+            $this->register_error( 'Missing Database Name' );
+            return false;
           }
           return (bool) $this->select( $dbBase );
           break;
         case 'oracle' :
          # Must have a username, a password and database namse
           if( !$dbUser || !$dbPass ) {
-            $this->register_error( 'Missing Username or Password' ); return false;
-
+            $this->register_error( 'Missing Username or Password' );
+            return false;
           }
          # Must have Database Name
           if( !$dbBase ) {
-            $this->register_error( 'Missing Database Name' ); return false;
-
+            $this->register_error( 'Missing Database Name' );
+            return false;
           }
          # Try to establish the server database handle
           if ( !$this->dbHandle = @OCILogon( $dbUser, $dbpassword, $dbname) ) {
-            $this->register_error( 'Unable to connect to Oracle Source' ); return false;
-
+            $this->register_error( 'Unable to connect to Oracle Source' );
+            return false;
           }
           return true;
           break;
         case 'postgresql' :
          # Must have a username, a password and database namse
           if( !$dbUser || !$dbPass ) {
-            $this->register_error( 'Missing Username or Password' ); return false;
-
+            $this->register_error( 'Missing Username or Password' );
+            return false;
           }
          # Must have Database Name
           if( !$dbBase ) {
-            $this->register_error( 'Missing Database Name' ); return false;
-
+            $this->register_error( 'Missing Database Name' );
+            return false;
           }
          # Try to establish the server database handle
           if( !$this->dbHandle = @pg_connect( "host=$dbHost user=$dbUser password=$dbPass dbname=$dbBase".($inPort?" port=$inPort":'') , true ) ) {       
-            $this->register_error( 'Unable to connect to PostgreSQL Source' ); return false;
-
+            $this->register_error( 'Unable to connect to PostgreSQL Source' );
+            return false;
           }
           return true;
           break;
@@ -210,19 +206,18 @@ class ezSQL {
           ini_set( 'track_errors' , 1 );
          # Must have a username, a password and database name
           if( !$dbUser || !$dbPass ) {
-            $this->register_error( 'Missing Username or Password' ); return false;
-
+            $this->register_error( 'Missing Username or Password' );
+            return false;
           }
          # Try to establish the server database handle
           if( !$this->dbHandle = @sqlite_open( $dbHost.$dbBase ) ) {
-            $this->register_error( 'Unable to connect to SQLite Source' ); return false;
-
+            $this->register_error( 'Unable to connect to SQLite Source' );
+            return false;
           }
           return true;
           break;
         default:
           $this->register_error( 'Invalid Database Type "'.$dbType.'"' );
-          return false;
       }
     }
 
@@ -279,7 +274,7 @@ class ezSQL {
      # Flush cached values..
       $this->flush();
      # For reg expressions
-      $query = trim( $query );
+      $query = trim( preg_replace( '/\;NOW\;/' , $this->sysdate() , $query ) );
      # Log how the function was called
       $this->func_call = "\$db->query( \"$query\" )";
      # Keep track of the last query for debug..
@@ -287,10 +282,6 @@ class ezSQL {
      # Determine the Query Type
       preg_match( "/^(insert|delete|update|replace|select)\s+/i" , $query , $sqlAction );
       $sqlAction = strtolower( $sqlAction ? $sqlAction[1] : 'other' );
-      $this->last_action = strtolower( $sqlAction );
-     # If this is an Insert Action, Remember the last Inserted ID
-      if ( $sqlAction = 'insert' )
-        $oldInsertedID = $this->last_insert;
      # Count how many queries there have been
       $this->stats['actions'][$sqlAction]++;
      # Use core file cache function
@@ -318,30 +309,23 @@ class ezSQL {
               $errorSeverity = $errorMessage_Row[0];
               $errorMessage = $errorMessage_Row[1];
             }
-
-            $this->register_error( "ErrorCode: ".$errorCode." ### Error Severity: ".$errorSeverity." ### Error Message: ".$errorMessage." ### Query: ".$query ); return false;
-
+            $is_insert = true;
+            $this->register_error( "ErrorCode: ".$errorCode." ### Error Severity: ".$errorSeverity." ### Error Message: ".$errorMessage." ### Query: ".$query );
+            return false;
           }
          # Query was an insert, delete, update, replace
-          if( in_array( $sqlAction , array( 'insert' , 'delete' , 'update' , 'replace' ) ) ) {
-
-
+          $is_insert = false;
+          if( preg_match( "/^(insert|delete|update|replace)\s+/i" , $query ) ) {
             $this->rows_affected = @mssql_rows_affected( $this->dbh );
            # Take note of the insert_id
-            if( in_array( $sqlAction , array( 'insert' , 'replace' ) ) ) {
-
+            if( preg_match("/^(insert|replace)\s+/i" , $query ) ) {
               if( ( $identityresultset = @mssql_query( "select SCOPE_IDENTITY()" ) )!=false ) {
                 $identityrow = @mssql_fetch_row( $identityresultset );
                 $this->insert_id = $identityrow[0];
               }
             }
-            if ( $sqlAction=='insert' ) {
-             # Return if Inserted ID is Different
-              $return_val = ($oldInsertedID!=$this->insert_id);
-            } else {
-             # Return number of rows affected
-              $return_val = $this->rows_affected;
-            }
+           # Return number of rows affected
+            $return_val = $this->rows_affected;
           } else {
            # Query was a select
            # Take note of column info
@@ -369,27 +353,20 @@ class ezSQL {
           $this->result = @mysql_query( $query , $this->dbHandle );
          # If there is an error then take note of it..
           if ( $str = @mysql_error( $this->dbHandle ) ) {
-
-            $this->register_error( $str ); return false;
-
+            $is_insert = true;
+            $this->register_error( $str );
+            return false;
           }
-          if( in_array( $sqlAction , array( 'insert' , 'delete' , 'update' , 'replace' ) ) ) {
-
-
+          $is_insert = false;
+          if( preg_match( "/^(insert|delete|update|replace)\s+/i" , $query ) ) {
            // Query was an insert, delete, update, replace
             $this->rows_affected = @mysql_affected_rows();
            # Take note of the insert_id
-            if( in_array( $sqlAction , array( 'insert' , 'replace' ) ) ) {
-
+            if( preg_match( "/^(insert|replace)\s+/i" , $query ) ) {
               $this->insert_id = @mysql_insert_id( $this->dbHandle );
             }
-            if ( $sqlAction=='insert' ) {
-             # Return if Inserted ID is Different
-              $return_val = ($oldInsertedID!=$this->insert_id);
-            } else {
-             # Return number of rows affected
-              $return_val = $this->rows_affected;
-            }
+           # Return number fo rows affected
+            $return_val = $this->rows_affected;
           } else {
            // Query was a select
            # Take note of column info
@@ -422,14 +399,13 @@ class ezSQL {
          # Execute the query..
           if( !$this->result = OCIExecute( $stmt ) ) {
             $error = OCIError( $stmt );
-            $this->register_error( $error['message'] ); return false;
-
+            $this->register_error( $error['message'] );
+            return false;
           }
-          if( in_array( $sqlAction , array( 'insert' , 'delete' , 'update' , 'create' ) ) ) {
-
-
-
-
+          $is_insert = false;
+          if( preg_match( '/^(insert|delete|update|create) /i' , $query) ) {
+           // Query was an insert
+            $is_insert = true;
            # Num afected rows
             $return_value = $this->rows_affected = @OCIRowCount( $stmt );
           } else {
@@ -464,29 +440,20 @@ class ezSQL {
           $this->result = @pg_query( $this->dbHandle , $query );
          # If there is an error then take note of it..
           if( $str = @pg_last_error( $this->dbHandle ) ) {
-
-            $this->register_error( $str ); return false;
-
+            $is_insert = true;
+            $this->register_error( $str );
+            return false;
           }
-          if( in_array( $sqlAction , array( 'insert' , 'delete' , 'update' , 'replace' ) ) ) {
-
-
+          $is_insert = false;
+          if( preg_match( "/^(insert|delete|update|replace)\s+/i" , $query ) ) {
            // Query was an insert, delete, update, replace
-            $this->rows_affected = @pg_affected_rows( $this->result );
+            $this->rows_affected = @pg_affected_rows($this->result);
            # Take note of the insert_id
-            if( in_array( $sqlAction , array( 'insert' , 'replace' ) ) ) {
-
-              $this->insert_id = pg_last_oid( $this->result );
+            if( preg_match( "/^(insert|replace)\s+/i" , $query ) ) {
+              $this->insert_id = pg_last_oid($this->result);
             }
-            if ( $sqlAction=='insert' ) {
-             # Return if Inserted ID is Different
-              $return_val = ($oldInsertedID!=$this->insert_id);
-            } else {
-             # Return number of rows affected
-              $return_val = $this->rows_affected;
-            }
-
-
+           # Return number fo rows affected
+            $return_val = $this->rows_affected;
           } else {
            // Query was a select
             $num_rows=0;
@@ -522,24 +489,15 @@ class ezSQL {
             $this->register_error( $err_str );
             return false;
           }
-          if( in_array( $sqlAction , array( 'insert' , 'delete' , 'update' , 'replace' ) ) ) {
-
+          if( preg_match( "/^(insert|delete|update|replace)\s+/i" , $query ) ) {
            // Query was an insert, delete, update, replace
             $this->rows_affected = @sqlite_changes( $this->dbHandle );
            # Take note of the insert_id
-            if( in_array( $sqlAction , array( 'insert' , 'replace' ) ) ) {
-
-              $this->insert_id = @sqlite_last_insert_rowid( $this->dbh );  
+            if( preg_match( "/^(insert|replace)\s+/i" , $query ) ) {
+              $this->insert_id = @sqlite_last_insert_rowid($this->dbh);  
             }
-            if ( $sqlAction=='insert' ) {
-             # Return if Inserted ID is Different
-              $return_val = ($oldInsertedID!=$this->insert_id);
-            } else {
-             # Return number of rows affected
-              $return_val = $this->rows_affected;
-            }
-
-
+           # Return number fo rows affected
+            $return_val = $this->rows_affected;
           } else {
            // Query was an select
            # Take note of column info  
@@ -568,7 +526,7 @@ class ezSQL {
           $this->register_error( 'Invalid Database Type "'.$dbType.'"' );
       }
      # Disk caching of queries
-      $this->store_cache( $sqlAction=='insert' );
+      $this->store_cache( $query , $is_insert );
      # If debug ALL queries
       $this->trace || $this->debug_all ? $this->debug() : null ;
      # Return response
@@ -643,7 +601,7 @@ class ezSQL {
       if ( ! $return_val ) {
         $this->query("CREATE SEQUENCE $seq_name maxValue 9999999999 INCREMENT BY 1 START WITH 1 CACHE 20 CYCLE");
         $return_val = $this->get_var("SELECT $seq_name.nextVal id FROM Dual");
-        register_error( $ezsql_oracle8_9_str[2].": $seq_name" , E_USER_NOTICE );
+        register_error( $SQueLCH_oracle8_9_str[2].": $seq_name" , E_USER_NOTICE );
       }
       return $return_val;
     }
@@ -780,10 +738,12 @@ class ezSQL {
     }
 
    # Cache - Store
-    function store_cache( $is_insert ) {
-     # Check is Caching is being used
-      if ( !$this->use_disk_cache ) {
-        $this->register_error( 'Caching not in use' , E_USER_NOTICE );
+    function store_cache( $query , $is_insert ) {
+     # Check if Caching is Required
+      if ( !$this->use_disk_cache
+            || ( $this->cache_queries && !$is_insert )
+            || ( $this->cache_inserts && $is_insert ) ) {
+       // Caching not in Use
         return false;
       }
      # Check is Cache Directory is set
@@ -791,87 +751,52 @@ class ezSQL {
         $this->register_error( 'Cache directory is not set' , E_USER_NOTICE );
         return false;
       }
+     # The would be cache file for this query
+      $cache_file = $this->cache_dir.'/'.md5( $this->dbType.$query ).'.ser';
+     # disk caching of queries
       if ( !is_dir( $this->cache_dir ) ) {
         $this->register_error( "Could not open cache dir: $this->cache_dir" , E_USER_NOTICE );
         return false;
       }
-     # Determine the cache filename for this query
-      $cache_file = $this->cache_dir.'/'.md5( $this->dbType.$this->last_query ).'.ser';
-     # Check to see if the Cache File exists
-      if ( !file_exists( $cache_file ) ) {
-        $this->register_error( 'Cache file does not exist' , E_USER_NOTICE );
-        return false;
-      }
-     # Determine if this Query should be Cached
-      if ( ( $this->cache_queries && ! $is_insert )
-           || ( $this->cache_inserts && $is_insert ) ) {
-
-
-
-
-
-
-
-
-       # Cache all result values
-        $result_cache = array (
-          'col_info' => $this->col_info,
-          'last_result' => $this->last_result,
-          'num_rows' => $this->num_rows,
-          'return_value' => $this->num_rows,
-          );
-       # Write to Cache
-        return error_log( serialize( $result_cache ) , 3 , $cache_file );
-      }
-     # No Action Taken
-      return true;
+     # Cache all result values
+      $result_cache = array (
+        'col_info' => $this->col_info,
+        'last_result' => $this->last_result,
+        'num_rows' => $this->num_rows,
+        'return_value' => $this->num_rows,
+        );
+     # Write to Cache
+      error_log( serialize( $result_cache ) , 3 , $cache_file );
     }
 
    # Cache - Retrieve
     function get_cache( $query ) {
-     # Check is Caching is being used
-      if ( !$this->use_disk_cache ) {
-        $this->register_error( 'Caching not in use' , E_USER_NOTICE );
-        return false;
-      }
      # Check is Cache Directory is set
       if( !$this->cache_dir ) {
         $this->register_error( 'Cache directory is not set' , E_USER_NOTICE );
         return false;
       }
-     # Determine the cache filename for this query
+     # The would be cache file for this query
       $cache_file = $this->cache_dir.'/'.md5( $this->dbType.$query ).'.ser';
-     # Check to see if the Cache File exists
-      if ( !file_exists( $cache_file ) ) {
-        $this->register_error( 'Cache file does not exist' , E_USER_NOTICE );
-        return false;
+     # Try to get previously cached version
+      if ( $this->use_disk_cache
+           && file_exists( $cache_file ) ) {
+       # Only use this cache file if less than 'cache_timeout' (hours)
+        if ( ( time() - filemtime( $cache_file ) ) > ( $this->cache_timeout*3600 ) ) {
+          unlink( $cache_file );
+        } else {
+          $result_cache = unserialize( file_get_contents( $cache_file ) );
+          $this->col_info = $result_cache['col_info'];
+          $this->last_result = $result_cache['last_result'];
+          $this->num_rows = $result_cache['num_rows'];
+          $this->from_disk_cache = true;
+         # If debug ALL queries
+          $this->trace || $this->debug_all ? $this->debug() : null ;
+          return $result_cache['return_value'];
+        }
       }
-     # Check how old the Cache File is
-      if ( time()-filemtime( $cache_file ) > $this->cache_timeout*3600 ) {
-        $this->register_error( 'Cache file is older than Timeout' , E_USER_NOTICE );
-       # Destroy the Cache File
-        unlink( $cache_file );
-        return false;
-      }
-     # Extract the Cache File contents
-      $result_cache = unserialize( file_get_contents( $cache_file ) );
-     # Check the Cache File Contents
-
-      $actualKeys = array_keys( $result_cache ); sort( $actualKeys );
-      if ( $expectedKeys!==$actualKeys ) {
-        $this->register_error( 'Cache file contents are Invalid' , E_USER_NOTICE );
-       # Destroy the Cache File
-        unlink( $cache_file );
-        return false;
-      }
-     # Process the Cache File
-      $this->col_info = $result_cache['col_info'];
-      $this->last_result = $result_cache['last_result'];
-      $this->num_rows = $result_cache['num_rows'];
-      $this->from_disk_cache = true;
-     # If debug ALL queries
-      $this->trace || $this->debug_all ? $this->debug() : null ;
-      return $result_cache['return_value'];
+      if ( !file_exists( $cache_file ) )
+        $this->register_error( "Cache file: $cache_file does not exist" , E_USER_NOTICE );
     }
 
    # Dump the contents of any input variable
@@ -881,7 +806,7 @@ class ezSQL {
       echo "<p><table><tr><td bgcolor=ffffff><blockquote><font color=000090>";
       echo "<pre><font face=arial>";
       if ( ! $this->vardump_called )
-        echo "<font color=800080><b>ezSQL</b> (v".EZSQL_VERSION.") <b>Variable Dump..</b></font>\n\n";
+        echo "<font color=800080><b>SQueLCH</b> (v".SQueLCH_VERSION.") <b>Variable Dump..</b></font>\n\n";
       $var_type = gettype( $mixed );
       print_r( ( $mixed ? $mixed : "<font color=red>No Value / False</font>" ) );
       echo "\n\n<b>Type:</b> ".ucfirst( $var_type )."\n";
@@ -908,10 +833,10 @@ class ezSQL {
     function debug() {
      # Start outup buffering
       ob_start();
-      echo "<blockquote class=\"ezSQL_debug\" style=\"font-face:Arial;\">";
-       # Only show ezSQL credits once..
+      echo "<blockquote class=\"SQueLCH_debug\" style=\"font-face:Arial;\">";
+       # Only show SQueLCH credits once..
         if ( !$this->debug_called )
-          echo "<div style=\"color:#800080;\"><strong>ezSQL</strong> (v".EZSQL_VERSION.") <strong>Debug..</strong></div>\n";
+          echo "<div style=\"color:#800080;\"><strong>SQueLCH</strong> (v".SQueLCH_VERSION.") <strong>Debug..</strong></div>\n";
         if ( $this->last_error )
           echo "<div style=\"color:#009;\"><strong>Last Error --</strong> [<strong style=\"color:#000;\">$this->last_error</strong>]</div>\n";
         if ( $this->from_disk_cache )
@@ -921,7 +846,7 @@ class ezSQL {
           echo "[<strong style=\"color:#000;\">$this->last_query</strong>]";
         echo "</div>";
         echo "<div style=\"color:#009;font-weight:bold;\">Query Result..</div>";
-        echo "<blockquote class=\"ezSQL_output\" style=\"font-size:0.8em;\">";
+        echo "<blockquote class=\"SQueLCH_output\" style=\"font-size:0.8em;\">";
           echo "<table cellpadding=5 cellspacing=1 bgcolor=555555>";
          # Results top rows
           if ( $this->col_info ) {

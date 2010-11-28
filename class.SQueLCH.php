@@ -2,13 +2,15 @@
 
 /*
 
-  SQueLCH v1.0.2
+  SQueLCH v1.0.3
 
   Copyright 2008 Luke Stevenson <lucanos@gmail.com>
 
   Any associated materials, used under licence from other sources are governed
     by the terms and conditions of those licences, unless superceded by this
     copyright.
+  This work is exclusively owned by Luke Stevenson and reproduction of it in
+    whole or in part may constitute a copyright infringement.
 
 */
 
@@ -17,7 +19,7 @@
 //=============================================================================
 
  # Initiate Defined Variables
-  define( 'SQueLCH_VERSION' , '1.0.2' );
+  define( 'SQueLCH_VERSION' , '1.0.3' );
   define( 'OBJECT'          , 'OBJECT'  , true );
   define( 'ARRAY_A'         , 'ARRAY_A' , true );
   define( 'ARRAY_N'         , 'ARRAY_N' , true );
@@ -393,13 +395,13 @@ class SQueLCH {
          # Parses the query and returns a statement..
           if( !$stmt = OCIParse( $this->dbHandle , $query ) ) {
             $error = OCIError( $this->dbHandle );
-            $this->register_error( $error["message"] );
+            $this->register_error( $error['message'] );
             return false;
           }
          # Execute the query..
           if( !$this->result = OCIExecute( $stmt ) ) {
             $error = OCIError( $stmt );
-            $this->register_error( $error["message"] );
+            $this->register_error( $error['message'] );
             return false;
           }
           $is_insert = false;
@@ -613,7 +615,7 @@ class SQueLCH {
    # Print SQL/DB error - over-ridden by specific DB class
     function register_error( $errMsg , $errLevel=E_USER_WARNING , $errFile=false , $errLine=false ) {
      # Keep track of last error
-      $this->last_error = $err_str;
+      $this->last_error = $errMsg;
      # Capture all errors to an error array no matter what happens
       $this->captured_errors[] = array (
         'error_str' => $errMsg.( $errFile ? ' in '.$errFile : '' ).( $errLine ? ' at Line #'.$errLine : '' ),
@@ -674,7 +676,7 @@ class SQueLCH {
         default :
          # If invalid output type was specified..
           $this->print_error( "\$db->get_row( string query , output type , int offset ) -- Output type must be one of: OBJECT, ARRAY_A, ARRAY_N" );
-          return array();
+          return null;
       }
     }
 
@@ -714,7 +716,7 @@ class SQueLCH {
             }
             return $new_array;
           } else {
-            return array();
+            return null;
           }
         default :
           return null;
@@ -810,7 +812,7 @@ class SQueLCH {
       echo "<b>Last Query</b> [".$array_sum( $this->stats['actions'] )."]<b>:</b> ".( $this->last_query ? $this->last_query : "NULL" )."\n";
       echo "<b>Last Function Call:</b> ".( $this->func_call ? $this->func_call : "None" )."\n";
       echo "<b>Last Rows Returned:</b> ".count( $this->last_result )."\n";
-      echo "</font></pre></font></blockquote></td></tr></table>";
+      echo "</font></pre></font></blockquote></td></tr></table>");
       echo "\n<hr size=1 noshade color=dddddd>";
      # Stop output buffering and capture debug HTML
       $html = ob_get_contents();
@@ -830,46 +832,55 @@ class SQueLCH {
     function debug() {
      # Start outup buffering
       ob_start();
-      echo "<blockquote>";
-     # Only show SQueLCH credits once..
-      if ( !$this->debug_called )
-        echo "<font color=800080 face=arial size=2><b>SQueLCH</b> (v".SQueLCH_VERSION.") <b>Debug..</b></font><p>\n";
-      if ( $this->last_error )
-        echo "<font face=arial size=2 color=000099><b>Last Error --</b> [<font color=000000><b>$this->last_error</b></font>]<p>";
-      if ( $this->from_disk_cache )
-        echo "<font face=arial size=2 color=000099><b>Results retrieved from disk cache</b></font><p>";
-      echo "<font face=arial size=2 color=000099><b>Query</b> [".array_sum( $this->stats['actions'] )."] <b>--</b> ";
-      echo "[<font color=000000><b>$this->last_query</b></font>]</font><p>";
-      echo "<font face=arial size=2 color=000099><b>Query Result..</b></font>";
-      echo "<blockquote>";
-      if ( $this->col_info ) {
-       # Results top rows
-        echo "<table cellpadding=5 cellspacing=1 bgcolor=555555>";
-        echo "<tr bgcolor=eeeeee><td nowrap valign=bottom><font color=555599 face=arial size=2><b>(row)</b></font></td>";
-        for ( $i=0 ; $i<count( $this->col_info ) ; $i++ ) {
-          echo "<td nowrap align=left valign=top><font size=1 color=555599 face=arial>{$this->col_info[$i]->type} {$this->col_info[$i]->max_length}</font><br><span style='font-family: arial; font-size: 10pt; font-weight: bold;'>{$this->col_info[$i]->name}</span></td>";
-        }
-        echo "</tr>";
-       # Print main results
-        if ( $this->last_result ) {
-          $i=0;
-          foreach ( $this->get_results( null , ARRAY_N ) as $one_row ) {
-            $i++;
-            echo "<tr bgcolor=ffffff><td bgcolor=eeeeee nowrap align=middle><font size=2 color=555599 face=arial>$i</font></td>";
-            foreach ( $one_row as $item )
-              echo "<td nowrap><font face=arial size=2>$item</font></td>";
+      echo "<blockquote class=\"SQueLCH_debug\" style=\"font-face:Arial;\">";
+       # Only show SQueLCH credits once..
+        if ( !$this->debug_called )
+          echo "<div style=\"color:#800080;\"><strong>SQueLCH</strong> (v".SQueLCH_VERSION.") <strong>Debug..</strong></div>\n";
+        if ( $this->last_error )
+          echo "<div style=\"color:#009;\"><strong>Last Error --</strong> [<strong style=\"color:#000;\">$this->last_error</strong>]</div>\n";
+        if ( $this->from_disk_cache )
+          echo "<div style=\"color:#009;font-weight:bold;\">Results retrieved from disk cache</div>";
+        echo "<div style=\"color:#009;\">";
+          echo "<strong>Query</strong> [".array_sum( $this->stats['actions'] )."] <strong>--</strong> ";
+          echo "[<strong style=\"color:#000;\">$this->last_query</strong>]";
+        echo "</div>";
+        echo "<div style=\"color:#009;font-weight:bold;\">Query Result..</div>";
+        echo "<blockquote class=\"SQueLCH_output\" style=\"font-size:0.8em;\">";
+          echo "<table cellpadding=5 cellspacing=1 bgcolor=555555>";
+         # Results top rows
+          if ( $this->col_info ) {
+            echo "<tr bgcolor=eeeeee>";
+              echo "<td style=\"color:#559;font-weight:bold;\" nowrap valign=bottom>(row)</td>";
+              for ( $i=0 ; $i<count( $this->col_info ) ; $i++ ) {
+                echo "<td nowrap align=left valign=top>";
+                  echo "<span style=\"color:#559;\">{$this->col_info[$i]->type} {$this->col_info[$i]->max_length}</span>";
+                  echo "<br>";
+                  echo "<strong>{$this->col_info[$i]->name}</strong>";
+                echo "</td>";
+              }
             echo "</tr>";
           }
-        } else {
+         # Print main results
+          if ( $this->last_result ) {
+            $i=0;
+            foreach ( $this->get_results( null , ARRAY_N ) as $one_row ) {
+              $i++;
+              echo "<tr style=\"background-color:#FFF;\"".( !$i%2 ? ' class="alt"' : '' ).">";
+                echo "<th style=\"background-color:#EEE;font-weight:normal;color:#559;\" nowrap>$i</th>";
+                foreach ( $one_row as $item )
+                  echo "<td style=\"font-size:1.2em;\" nowrap>$item</td>";
+              echo "</tr>";
+            }
+          } else {
          # If last result
-          echo "<tr bgcolor=ffffff><td colspan=".( count( $this->col_info )+1 )."><font face=arial size=2>No Results</font></td></tr>";
-        }
-        echo "</table>";
-      } else {
-       # If col_info
-        echo "<font face=arial size=2>No Results</font>";
-      }
-      echo "</blockquote></blockquote><hr noshade color=dddddd size=1>";
+            echo "<tr style=\"background-color:#FFF;\">";
+              echo "<td colspan=".( count( $this->col_info )+1 ).">No Results</td>";
+            echo "</tr>";
+          }
+          echo "</table>";
+        echo "</blockquote>";
+      echo "</blockquote>";
+      echo "<hr noshade style=\"color:#DDD;\">";
      # Stop output buffering and capture debug HTML
       $html = ob_get_contents();
       ob_end_clean();

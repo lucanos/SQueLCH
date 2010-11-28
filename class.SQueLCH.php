@@ -2,7 +2,7 @@
 
 /*
 
-  SQueLCH v3.1.0
+  SQueLCH v3.1.1
 
   Copyright 2010 Luke Stevenson <lucanos@gmail.com>
 
@@ -14,6 +14,13 @@
 
   == Version History ==
   ---------------------
+  2010/11/20 - v3.1.1
+    Modified escape() to use mysql_real_escape_string() in preference to
+      mysql_escape_string(). Slight modification of Syntax in same function.
+    Extended Query Functions to allow for Arrayed Parameters.
+    Created Arrayed Parameter "ignoreCache" allowing per-query override of
+      any cache, when queried via a sub-function (get_results, get_row,
+      get_col, get_var).
   2010/11/10 - v3.1.0
     Added feature to allow DB Details to be passed to the SQueLCH constructor
       as an array - array( 'type'=>'mysql' , 'user'=>'username' , ...
@@ -36,7 +43,7 @@ class SQueLCH {
   //===========================================================================
 
    # Class Details
-    var $version          = '3.1';
+    var $version          = '3.1.1';
     var $classname        = 'SQueLCH';
 
    # Action Flags
@@ -95,7 +102,7 @@ class SQueLCH {
      # Check for Compiled DB Details
       if( is_array( $dbType ) ){
         $dbArr = $dbType;
-        if( isset( $dbArr['type'] ) ) $dbType = $dbArr['type'];
+        $dbType = ( isset( $dbArr['type'] ) ? $dbArr['type'] : false );
         if( isset( $dbArr['user'] ) ) $dbUser = $dbArr['user'];
         if( isset( $dbArr['pass'] ) ) $dbPass = $dbArr['pass'];
         if( isset( $dbArr['base'] ) ) $dbBase = $dbArr['base'];
@@ -622,11 +629,18 @@ class SQueLCH {
 
    # Get one variable
     function get_var( $query=null , $x=0 , $y=0 ) {
+     # Allow for Arrayed Parameters
+      if( is_array( $x ) ){
+        $paramArr = $x;
+        if( isset( $paramArr['x'] ) );           $x           = $paramArr['x'];
+        if( isset( $paramArr['y'] ) );           $y           = $paramArr['y'];
+        if( isset( $paramArr['ignoreCache'] ) ); $ignoreCache = $paramArr['ignoreCache'];
+      }
      # Log how the function was called
       $this->func_call = '$db->get_var( "'.$query.'" , '.$x.' , '.$y.' )';
      # If there is a query then perform it if not then use cached results..
       if( $query )
-        $this->query( $query );
+        $this->query( $query , $ignoreCache );
      # Extract var out of cached results based x,y vals
       if( $this->last_result[$y] )
         $values = array_values( get_object_vars( $this->last_result[$y] ) );
@@ -636,11 +650,18 @@ class SQueLCH {
 
    # Get one row
     function get_row( $query=null , $output='OBJECT' , $y=0 ) {
+     # Allow for Arrayed Parameters
+      if( is_array( $output ) ){
+        $paramArr = $output;
+        if( isset( $paramArr['output'] ) );      $output       = $paramArr['output'];
+        if( isset( $paramArr['y'] ) );           $y            = $paramArr['y'];
+        if( isset( $paramArr['ignoreCache'] ) ); $ignoreCache  = $paramArr['ignoreCache'];
+      }
      # Log how the function was called
       $this->func_call = '$db->get_row( "'.$query.'" , '.$output.' , '.$y.' )';
      # If there is a query then perform it if not then use cached results..
       if( $query )
-        $this->query( $query );
+        $this->query( $query , $use_cache );
       if( !$this->last_result[$y] )
         return null;
      # Format Output dependent on Requested Object
@@ -663,11 +684,17 @@ class SQueLCH {
 
    # Get one column
     function get_col( $query=null , $x=0 ) {
+     # Allow for Arrayed Parameters
+      if( is_array( $output ) ){
+        $paramArr = $x;
+        if( isset( $paramArr['x'] ) );           $x           = $paramArr['x'];
+        if( isset( $paramArr['ignoreCache'] ) ); $ignoreCache = $paramArr['ignoreCache'];
+      }
      # Log how the function was called
       $this->func_call = '$db->get_col( "'.$query.'" , '.$x.' )';
      # If there is a query then perform it if not then use cached results..
       if( $query )
-        $this->query( $query );
+        $this->query( $query , $use_cache );
      # Extract the column values
       for( $i=0 ; $i<count( $this->last_result ) ; $i++ )
         $new_array[$i] = $this->get_var( null , $x , $i );
@@ -677,11 +704,17 @@ class SQueLCH {
 
    # Return the the query as a result set
     function get_results( $query=null , $output='OBJECT' ) {
+     # Allow for Arrayed Parameters
+      if( is_array( $output ) ){
+        $paramArr = $output;
+        if( isset( $paramArr['output'] ) );      $output      = $paramArr['output'];
+        if( isset( $paramArr['ignoreCache'] ) ); $ignoreCache = $paramArr['ignoreCache'];
+      }
      # Log how the function was called
       $this->func_call = '$db->get_results( "'.$query.'" , '.$output.' )';
      # If there is a query then perform it if not then use cached results..
       if( $query )
-        $this->query( $query );
+        $this->query( $query , $use_cache );
      # Format Output dependent on Requested Object
       switch( $output ) {
         case 'OBJECT' :
@@ -731,33 +764,31 @@ class SQueLCH {
       switch( $this->dbType ) {
         case 'mssql' :
           return str_ireplace( "'" , "''" , $inString );
-          break;
         case 'mysql' :
+          if( function_exists( 'mysql_real_escape_string' ) )
+            return mysql_real_escape_string( stripslashes( $inString ) , $this->dbHandle );
           return mysql_escape_string( stripslashes( $inString ) );
-          break;
         case 'oracle' :
           return str_replace( "'" , "''" , str_replace( "''" , "'" , stripslashes( $inString ) ) );
-          break;
         case 'postgresql' :
           return pg_escape_string( stripslashes( $inString ) );
-          break;
         case 'sqlite' :
           return sqlite_escape_string( stripslashes( preg_replace( "/[\r\n]/" , '' , $inString ) ) );
-          break;
         default :
           $this->register_error( 'Invalid Database Type "'.$dbType.'"' , __FILE__ , __LINE__ );
+          return $inString;
       }
     }
 
    # Return database specific system date syntax
     function sysdate() {
       switch( $this->dbType ) {
-        case 'mssql'      : return 'getDate()'; break;
-        case 'mysql'      : return 'NOW()';     break;
-        case 'oracle'     : return "SYSDATE";   break;
-        case 'postgresql' : return 'NOW()';     break;
-        case 'sqlite'     : return 'now';       break;
-        default           : $this->register_error( 'Invalid Database Type "'.$dbType.'"' , __FILE__ , __LINE__ );
+        case 'mssql'      : return 'getDate()';
+        case 'mysql'      : return 'NOW()';
+        case 'oracle'     : return 'SYSDATE';
+        case 'postgresql' : return 'NOW()';
+        case 'sqlite'     : return 'now';
+        default           : $this->register_error( 'Invalid Database Type "'.$dbType.'"' , __FILE__ , __LINE__ ); return date( 'Y/m/d H:i:s' );
       }
     }
 
@@ -894,6 +925,9 @@ class SQueLCH {
       return @unlink( $this->cache_filename( $queryORfilename ) );
     }
 
+   # Turn Caching on or off..
+    function cache_on()  { $this->cache = true;  }
+    function cache_off() { $this->cache = false; }
 
   // PHP Subfunctions ********************************** Debugging and Analytic
   //===========================================================================
@@ -1035,19 +1069,21 @@ class SQueLCH {
     }
     function console_querylog() {
       echo '<script language="javascript">';
-        echo 'console.groupCollapsed("SQueLCH (v'.$this->version.') Query Log");';
-      if( !count( $this->querylog ) ) {
-        echo 'console.warn( \'"SQueLCH::console_querylog()" called - No Queries\' );';
-      } else {
-        foreach( $this->querylog as $id => $event ) {
-          echo sprintf( 'console.%s( \'%2s: "%s" (%s ms)\' );' ,
-                     ( $event['result']=='success' ? 'info' : 'error' ) ,
-                     $id ,
-                     str_replace( '"' , '\"' , $event['query'] ) ,
-                     number_format( ( float ) $event['time']*1000 , 5 ) );
-        }
-      }
-      echo 'console.groupEnd();';
+        echo 'if( typeof console == "object" ){';
+          echo 'console.groupCollapsed("SQueLCH (v'.$this->version.') Query Log");';
+          if( !count( $this->querylog ) ) {
+            echo 'console.warn( \'"SQueLCH::console_querylog()" called - No Queries\' );';
+          } else {
+            foreach( $this->querylog as $id => $event ) {
+              echo sprintf( 'console.%s( \'%2s: "%s" (%s ms)\' );' ,
+                         ( $event['result']=='success' ? 'info' : 'error' ) ,
+                         $id ,
+                         str_replace( '"' , '\"' , $event['query'] ) ,
+                         number_format( ( float ) $event['time']*1000 , 5 ) );
+            }
+          }
+          echo 'console.groupEnd();';
+        echo '}';
       echo '</script>';
     }
 

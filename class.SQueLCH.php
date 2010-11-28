@@ -2,7 +2,7 @@
 
 /*
 
-  SQueLCH v1.0.3
+  SQueLCH v2.0
 
   Copyright 2008 Luke Stevenson <lucanos@gmail.com>
 
@@ -19,7 +19,7 @@
 //=============================================================================
 
  # Initiate Defined Variables
-  define( 'SQueLCH_VERSION' , '1.0.3' );
+  define( 'SQueLCH_VERSION' , '2.0' );
   define( 'OBJECT'          , 'OBJECT'  , true );
   define( 'ARRAY_A'         , 'ARRAY_A' , true );
   define( 'ARRAY_N'         , 'ARRAY_N' , true );
@@ -770,32 +770,49 @@ class SQueLCH {
 
    # Cache - Retrieve
     function get_cache( $query ) {
+     # Check is Caching is being used
+      if ( !$this->use_disk_cache ) {
+        $this->register_error( 'Caching not in use' , E_USER_NOTICE );
+        return false;
+      }
      # Check is Cache Directory is set
       if( !$this->cache_dir ) {
         $this->register_error( 'Cache directory is not set' , E_USER_NOTICE );
         return false;
       }
-     # The would be cache file for this query
+     # Determine the cache filename for this query
       $cache_file = $this->cache_dir.'/'.md5( $this->dbType.$query ).'.ser';
-     # Try to get previously cached version
-      if ( $this->use_disk_cache
-           && file_exists( $cache_file ) ) {
-       # Only use this cache file if less than 'cache_timeout' (hours)
-        if ( ( time() - filemtime( $cache_file ) ) > ( $this->cache_timeout*3600 ) ) {
-          unlink( $cache_file );
-        } else {
-          $result_cache = unserialize( file_get_contents( $cache_file ) );
-          $this->col_info = $result_cache['col_info'];
-          $this->last_result = $result_cache['last_result'];
-          $this->num_rows = $result_cache['num_rows'];
-          $this->from_disk_cache = true;
-         # If debug ALL queries
-          $this->trace || $this->debug_all ? $this->debug() : null ;
-          return $result_cache['return_value'];
-        }
+     # Check to see if the Cache File exists
+      if ( !file_exists( $cache_file ) ) {
+        $this->register_error( 'Cache file does not exist' , E_USER_NOTICE );
+        return false;
       }
-      if ( !file_exists( $cache_file ) )
-        $this->register_error( "Cache file: $cache_file does not exist" , E_USER_NOTICE );
+     # Check how old the Cache File is
+      if ( time()-filemtime( $cache_file ) > $this->cache_timeout*3600 ) {
+        $this->register_error( 'Cache file is older than Timeout' , E_USER_NOTICE );
+       # Destroy the Cache File
+        unlink( $cache_file );
+        return false;
+      }
+     # Extract the Cache File contents
+      $result_cache = unserialize( file_get_contents( $cache_file ) );
+     # Check the Cache File Contents
+      $expectedKeys = array( 'col_info' , 'last_result' , 'num_rows' , 'return_value' ); sort( $expectedKeys );
+      $actualKeys = array_keys( $result_cache ); sort( $actualKeys );
+      if ( $expectedKeys!==$actualKeys ) {
+        $this->register_error( 'Cache file contents are Invalid' , E_USER_NOTICE );
+       # Destroy the Cache File
+        unlink( $cache_file );
+        return false;
+      }
+     # Process the Cache File
+      $this->col_info = $result_cache['col_info'];
+      $this->last_result = $result_cache['last_result'];
+      $this->num_rows = $result_cache['num_rows'];
+      $this->from_disk_cache = true;
+     # If debug ALL queries
+      $this->trace || $this->debug_all ? $this->debug() : null ;
+      return $result_cache['return_value'];
     }
 
    # Dump the contents of any input variable
@@ -812,7 +829,7 @@ class SQueLCH {
       echo "<b>Last Query</b> [".$array_sum( $this->stats['actions'] )."]<b>:</b> ".( $this->last_query ? $this->last_query : "NULL" )."\n";
       echo "<b>Last Function Call:</b> ".( $this->func_call ? $this->func_call : "None" )."\n";
       echo "<b>Last Rows Returned:</b> ".count( $this->last_result )."\n";
-      echo "</font></pre></font></blockquote></td></tr></table>");
+      echo "</font></pre></font></blockquote></td></tr></table>";
       echo "\n<hr size=1 noshade color=dddddd>";
      # Stop output buffering and capture debug HTML
       $html = ob_get_contents();

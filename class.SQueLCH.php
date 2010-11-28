@@ -1,13 +1,13 @@
 <?php
 /*
-** SQueLCH - Structured Query Language CLASS Handler
+** SQueLCH - Universal Version
 ** Based on
 ** ezSQL by Justin Vincent (justin@visunet.ie)
 */
 
 // SQueLCH Constants
 //=============================================================================
-define( 'SQueLCH_VERSION'  , '1.0' );
+define( 'SQueLCH_VERSION'  , '1.0.1' );
 define( 'OBJECT'           , 'OBJECT'  , true );
 define( 'ARRAY_A'          , 'ARRAY_A' , true );
 define( 'ARRAY_N'          , 'ARRAY_N' , true );
@@ -32,10 +32,13 @@ class SQueLCH {
 
  # Statistics
   var $num_queries      = 0;
+  var $last_time        = 0;
+  var $all_time         = 0;
 
  # History
   var $last_query       = null;
   var $last_error       = null;
+  var $last_insert      = null;
 
  # Database Values
   var $dbParameters     = array();
@@ -99,6 +102,10 @@ class SQueLCH {
       );
     }
 
+   // Get the Exact Time - 1/100sec
+    function getMicro() {
+      return round( array_sum( explode( ' ' , microtime(1) ) ) , 2 );
+    }
 
 
  // Utility Functions
@@ -219,6 +226,8 @@ class SQueLCH {
             $this->handleError( 3 , 'Unexpected error while trying to select database.' ); return false;
           }
           break;
+
+/*
         case 'pdo' :
          # Format for call is "SQueLCH( 'pdo' , USERNAME , PASSWORD , DSN )"
           if ( count( $args )!=4 ) {
@@ -247,6 +256,8 @@ class SQueLCH {
             $this->handleError( 3 , $php_errormsg ); return false;
           }
           break;
+*/
+
         default :
           $this->handleError( 3 , "Unrecognised Database type of \"{$this->dbType}\" passed to \"connect\" function" );
           return false;
@@ -304,6 +315,8 @@ class SQueLCH {
       $this->last_query = $query;
      # Count how many queries there have been
       $this->num_queries++;
+     # Start the Clock
+      $startTime = $this->getMicro();
      # Use core file cache function
       if ( $cache = $this->get_cache( $query ) ) {
         return $cache;
@@ -449,6 +462,7 @@ class SQueLCH {
         }
         break;
 
+/*
       case 'pdo' :
        # Query was an insert, delete, update, replace
         if ( preg_match( "/^(insert|delete|update|replace|drop|create)\s+/i" , $query ) ) {		
@@ -499,6 +513,7 @@ class SQueLCH {
           $return_val = $this->num_rows;
         }
         break;
+*/
 
       case 'mssql' :
        # Perform the query via std mssql_query function.. If there is an error then take note of it..
@@ -605,6 +620,9 @@ class SQueLCH {
     $this->store_cache( $query , $is_insert );
    # If debug ALL queries
     $this->debug_all ? $this->debug() : null ;
+   # Catch the End Time
+    $this->last_time = $startTime - getMicro();
+    $this->all_time += $this->last_time;
    # Return response
     return $return_val;
   }
@@ -914,4 +932,3 @@ class SQueLCH {
   }
 
 }
-

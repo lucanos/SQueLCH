@@ -2,7 +2,7 @@
 
 /*
 
-  SQueLCH v3.1.1
+  SQueLCH v3.3.0
 
   Copyright 2010 Luke Stevenson <lucanos@gmail.com>
 
@@ -14,6 +14,14 @@
 
   == Version History ==
   ---------------------
+  2010/11/25 - v3.3.0
+    Added functionality to allow for Cleaning of Old Cachefiles from the
+      Cache Directory, based on the Cache Lifetime. Using $db->cache_clean()
+    This is expected to be performed as part of Housekeeping duties within
+      a CRON Job.
+  2010/11/24 - v3.2.0
+    Added functionality to record Queries and Error Messages into a specified
+      debug file.
   2010/11/20 - v3.1.1
     Modified escape() to use mysql_real_escape_string() in preference to
       mysql_escape_string(). Slight modification of Syntax in same function.
@@ -43,7 +51,7 @@ class SQueLCH {
   //===========================================================================
 
    # Class Details
-    var $version          = '3.1.1';
+    var $version          = '3.3.0';
     var $classname        = 'SQueLCH';
 
    # Action Flags
@@ -63,6 +71,7 @@ class SQueLCH {
     var $debug_all        = false; // same as $trace
     var $debug_echo_is_on = true;
     var $show_errors      = true;
+    var $error_file       = 'SQueLCH_log.txt'; // Located within the Cache Directory
 
     var $captured_errors  = array();
 
@@ -102,7 +111,7 @@ class SQueLCH {
      # Check for Compiled DB Details
       if( is_array( $dbType ) ){
         $dbArr = $dbType;
-        $dbType = ( isset( $dbArr['type'] ) ? $dbArr['type'] : false );
+        if( isset( $dbArr['type'] ) ) $dbType = $dbArr['type'];
         if( isset( $dbArr['user'] ) ) $dbUser = $dbArr['user'];
         if( isset( $dbArr['pass'] ) ) $dbPass = $dbArr['pass'];
         if( isset( $dbArr['base'] ) ) $dbBase = $dbArr['base'];
@@ -845,6 +854,9 @@ class SQueLCH {
      # Output to PHP Native Error Handler
       if( $this->show_errors )
         trigger_error( $errMsg , $errLevel );
+     # Record to Logfile
+      if( $this->error_file )
+        @file_put_contents( $this->cache_dir.'/'.$this->error_file , date('Y/m/d H:i:s')."\n  File:  ".$_SERVER['REQUEST_URI']."\n  Query: {$this->last_query}\n  Error: {$errMsg}\n\n" , FILE_APPEND );
     }
 
    # Turn error handling on or off..
@@ -923,6 +935,22 @@ class SQueLCH {
       if( file_exists( $queryORfilename ) )
         return @unlink( $queryORfilename );
       return @unlink( $this->cache_filename( $queryORfilename ) );
+    }
+
+   # Cache - Remove Old Files
+    function cache_clean() {
+     # Get all the Cachefiles
+      $cachefiles = glob( $this->cache_dir.'/*.ser' );
+     # Determine the Cutoff Time for Cachefiles, according to the Lifetime
+      $cutofftime = strtotime( '-'.$this->cache_lifetime );
+     # Loop through the Cachefiles
+      foreach( $cachefiles as $k => $v ){
+       # If the File was Modified before the Cutoff Time
+        if( filemtime( $v )<$cutofftime ){
+         # Remove it.
+          unlink( $v );
+        }
+      }
     }
 
    # Turn Caching on or off..
